@@ -1,7 +1,8 @@
-require('dotenv').config({ path: '../../../../.env' }); // Adjust depending on deploy env
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 const express = require('express');
 const { twiml } = require('twilio');
-const Retell = require('retell-sdk');
+const { Retell } = require('retell-sdk');
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -21,18 +22,17 @@ app.post('/twilio-voice-webhook', async (req, res) => {
         console.log(`Incoming call from ${req.body.From}`);
 
         // Register the call with Retell to get a dedicated WebSocket URL
-        const callResponse = await retellClient.call.register({
+        const callResponse = await retellClient.call.registerPhoneCall({
             agent_id: process.env.RETELL_AGENT_ID,
-            audio_websocket_protocol: 'twilio',
-            audio_encoding: 'mulaw',
-            sample_rate: 8000
+            from_number: req.body.From,
+            to_number: req.body.To,
         });
 
         // Tell Twilio to answer the call and stream the audio to Retell's WebSocket
         const response = new twiml.VoiceResponse();
         const connect = response.connect();
         connect.stream({
-            url: callResponse.audio_websocket_url,
+            url: `wss://api.retellai.com/audio-websocket/${callResponse.call_id}`,
         });
 
         res.type('text/xml');
