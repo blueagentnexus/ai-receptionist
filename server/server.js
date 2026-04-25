@@ -1,5 +1,9 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+try {
+    require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+} catch (e) {
+    // Ignore error in production where .env file doesn't exist
+}
 const express = require('express');
 const { twiml } = require('twilio');
 const { Retell } = require('retell-sdk');
@@ -26,12 +30,13 @@ app.post('/twilio-voice-webhook', async (req, res) => {
             agent_id: process.env.RETELL_AGENT_ID,
             from_number: req.body.From,
             to_number: req.body.To,
+            direction: 'inbound',
         });
 
         // Tell Twilio to answer the call and stream the audio to Retell's WebSocket
         const response = new twiml.VoiceResponse();
         const connect = response.connect();
-        connect.stream({
+        const stream = connect.stream({
             url: `wss://api.retellai.com/audio-websocket/${callResponse.call_id}`,
         });
 
